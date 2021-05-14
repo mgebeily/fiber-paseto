@@ -3,6 +3,7 @@ package pasetoware
 import (
 	"testing"
 
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,7 +17,7 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 
 func assertNotEqual(t *testing.T, a interface{}, b interface{}) {
 	if a == b {
-		t.Fatalf("%s != %s", a, b)
+		t.Fatalf("%s == %s", a, b)
 	}
 }
 
@@ -91,11 +92,11 @@ func Test_Param_Source(t *testing.T) {
 		SymmetricKey: []byte("01234567890123456789012345678901"),
 	}))
 
-	app.Get("/token/:token", func(c *fiber.Ctx) error {
+	app.Get("/token/:token?", func(c *fiber.Ctx) error {
 		return c.SendString(c.Params("token"))
 	})
 
-	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/token", nil))
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/token/whomst", nil))
 
 	assertEqual(t, err, nil)
 	assertEqual(t, resp.StatusCode, 401)
@@ -112,7 +113,45 @@ func Test_Param_Source(t *testing.T) {
 }
 
 func Test_Cookie_Source(t *testing.T) {
+	app := fiber.New()
 
+	app.Use(New(&Config{
+		TokenLookup:  "cookie:token",
+		SymmetricKey: []byte("01234567890123456789012345678901"),
+	}))
+
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendString(c.Params("value"))
+	})
+
+	r := httptest.NewRequest(fiber.MethodGet, "/test", nil)
+
+	resp, err := app.Test(r)
+
+	assertEqual(t, err, nil)
+	assertEqual(t, resp.StatusCode, 401)
+
+	r = httptest.NewRequest(fiber.MethodGet, "/test", nil)
+	r.AddCookie(&http.Cookie{
+		Name:  "token",
+		Value: "wrong",
+	})
+
+	resp, err = app.Test(r)
+
+	assertEqual(t, err, nil)
+	assertEqual(t, resp.StatusCode, 401)
+
+	r = httptest.NewRequest(fiber.MethodGet, "/test", nil)
+	r.AddCookie(&http.Cookie{
+		Name:  "token",
+		Value: "v2.local.R3VNW9sJWJlOLIGTIHkIGqA1QUz-4SkDiI6pZMGC0h8oGCqnAHC6ww6HiSdf-Nqh6kOGmdxdYslLDdRsfvcIoKl_B0H2GxL0HweD4CqpDISf91Xy68RkQwurP66DJ8GAGzyyIGE4wpsCf_GFvTk-mkb4r9kpfKnErUL8AvJCa1YvM5v9vP8jOfZ7rhQRtQ.c29tZSBmb290ZXI",
+	})
+
+	resp, err = app.Test(r)
+
+	assertEqual(t, err, nil)
+	assertEqual(t, resp.StatusCode, 200)
 }
 
 func Test_Multiple_Sources(t *testing.T) {

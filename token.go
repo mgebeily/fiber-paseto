@@ -1,7 +1,6 @@
 package pasetoware
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -100,8 +99,6 @@ func createTokenExtractor(tokenLookup string, authScheme string) func(c *fiber.C
 			})
 		case "param":
 			checks = append(checks, func(c *fiber.Ctx) string {
-				fmt.Print("bozz")
-				fmt.Println(c.Params(parts[1]))
 				return c.Params(parts[1])
 			})
 		case "cookie":
